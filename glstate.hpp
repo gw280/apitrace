@@ -42,6 +42,15 @@ namespace image {
 
 namespace glstate {
 
+struct TextureInfo {
+    TextureInfo() : width(0), height(0), depth(0), format(0) {}
+    TextureInfo(GLint w, GLint h, GLint d, GLint f) :
+        width(w), height(h), depth(d), format(f) {}
+    GLint width;
+    GLint height;
+    GLint depth;
+    GLint format;
+};
 
 const char *enumToString(GLenum pname);
 

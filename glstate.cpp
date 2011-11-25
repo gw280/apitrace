@@ -149,6 +149,26 @@ getShaderObjSource(ShaderMap &shaderMap, GLhandleARB shaderObj)
     delete [] source;
 }
 
+static inline void
+getTextureInfo(GLenum target, GLint level, TextureInfo &info)
+{
+    info.height = 1;
+    info.depth = 1;
+
+    glGetTexLevelParameteriv(target, level, GL_TEXTURE_INTERNAL_FORMAT, &info.format);
+
+    info.width = 0;
+    glGetTexLevelParameteriv(target, level, GL_TEXTURE_WIDTH, &info.width);
+
+    if (target != GL_TEXTURE_1D) {
+        info.height = 0;
+        glGetTexLevelParameteriv(target, level, GL_TEXTURE_HEIGHT, &info.height);
+        if (target == GL_TEXTURE_3D) {
+            info.depth = 0;
+            glGetTexLevelParameteriv(target, level, GL_TEXTURE_DEPTH, &info.depth);
+        }
+    }
+}
 
 static inline void
 dumpProgram(JSONWriter &json, GLint program)
@@ -565,26 +585,9 @@ dumpShadersUniforms(JSONWriter &json)
 
 
 static inline void
-dumpTextureImage(JSONWriter &json, GLenum target, GLint level)
+dumpTextureImage(JSONWriter &json, GLenum target, GLint level, TextureInfo &info)
 {
-    GLint width, height = 1, depth = 1;
-    GLint format;
-
-    glGetTexLevelParameteriv(target, level, GL_TEXTURE_INTERNAL_FORMAT, &format);
-
-    width = 0;
-    glGetTexLevelParameteriv(target, level, GL_TEXTURE_WIDTH, &width);
-
-    if (target != GL_TEXTURE_1D) {
-        height = 0;
-        glGetTexLevelParameteriv(target, level, GL_TEXTURE_HEIGHT, &height);
-        if (target == GL_TEXTURE_3D) {
-            depth = 0;
-            glGetTexLevelParameteriv(target, level, GL_TEXTURE_DEPTH, &depth);
-        }
-    }
-
-    if (width <= 0 || height <= 0 || depth <= 0) {
+    if (info.width <= 0 || info.height <= 0 || info.depth <= 0) {
         return;
     } else {
         char label[512];
@@ -601,11 +604,11 @@ dumpTextureImage(JSONWriter &json, GLenum target, GLint level)
         // Tell the GUI this is no ordinary object, but an image
         json.writeStringMember("__class__", "image");
 
-        json.writeNumberMember("__width__", width);
-        json.writeNumberMember("__height__", height);
-        json.writeNumberMember("__depth__", depth);
+        json.writeNumberMember("__width__", info.width);
+        json.writeNumberMember("__height__", info.height);
+        json.writeNumberMember("__depth__", info.depth);
 
-        json.writeStringMember("__format__", enumToString(format));
+        json.writeStringMember("__format__", enumToString(info.format));
 
         // Hardcoded for now, but we could chose types more adequate to the
         // texture internal format
@@ -613,7 +616,7 @@ dumpTextureImage(JSONWriter &json, GLenum target, GLint level)
         json.writeBoolMember("__normalized__", true);
         json.writeNumberMember("__channels__", 4);
 
-        GLubyte *pixels = new GLubyte[depth*width*height*4];
+        GLubyte *pixels = new GLubyte[info.depth*info.width*info.height*4];
 
         resetPixelPackState();
 
@@ -624,7 +627,7 @@ dumpTextureImage(JSONWriter &json, GLenum target, GLint level)
         json.beginMember("__data__");
         char *pngBuffer;
         int pngBufferSize;
-        image::writePixelsToBuffer(pixels, width, height, 4, true, &pngBuffer, &pngBufferSize);
+        image::writePixelsToBuffer(pixels, info.width, info.height, 4, true, &pngBuffer, &pngBufferSize);
         json.writeBase64(pngBuffer, pngBufferSize);
         free(pngBuffer);
         json.endMember(); // __data__
@@ -646,19 +649,19 @@ dumpTexture(JSONWriter &json, GLenum target, GLenum binding)
 
     GLint level = 0;
     do {
-        GLint width = 0, height = 0;
-        glGetTexLevelParameteriv(target, level, GL_TEXTURE_WIDTH, &width);
-        glGetTexLevelParameteriv(target, level, GL_TEXTURE_HEIGHT, &height);
-        if (!width || !height) {
+        TextureInfo info;
+
+        getTextureInfo(target, level, info);
+        if (!info.width || !info.height) {
             break;
         }
 
         if (target == GL_TEXTURE_CUBE_MAP) {
             for (int face = 0; face < 6; ++face) {
-                dumpTextureImage(json, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level);
+                dumpTextureImage(json, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, info);
             }
         } else {
-            dumpTextureImage(json, target, level);
+            dumpTextureImage(json, target, level, info);
         }
 
         ++level;
