@@ -240,6 +240,17 @@ class GlRetracer(Retracer):
         
         Retracer.invokeFunction(self, function)
 
+        if function.name == "glBindTexture":
+            print '    glstate::bound_texture[target] = texture;'
+        elif function.name == "glTexImage2D":
+            print '    if (level == 0) {'
+            print '        glstate::texture_info[glstate::bound_texture[target]] = glstate::TextureInfo(width, height, 1, internalformat);'
+            print '    }'
+        elif function.name == "glTexImage3D":
+            print '    if (level == 0) {'
+            print '        glstate::texture_info[glstate::bound_texture[target]] = glstate::TextureInfo(width, height, depth, internalformat);'
+            print '    }'
+
         # Error checking
         if function.name == "glBegin":
             print '    glretrace::insideGlBeginEnd = true;'

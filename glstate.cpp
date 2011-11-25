@@ -57,6 +57,8 @@ OSStatus CGSGetSurfaceBounds(CGSConnectionID, CGWindowID, CGSSurfaceID, CGRect *
 
 namespace glstate {
 
+std::map<GLenum, GLuint> bound_texture;
+std::map<GLuint, TextureInfo> texture_info;
 
 static inline void
 resetPixelPackState(void) {

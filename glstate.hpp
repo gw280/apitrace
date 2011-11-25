@@ -28,6 +28,7 @@
 
 
 #include <ostream>
+#include <map>
 
 #include "glimports.hpp"
 
@@ -51,6 +52,9 @@ struct TextureInfo {
     GLint depth;
     GLint format;
 };
+
+extern std::map<GLenum, GLuint> bound_texture;
+extern std::map<GLuint, TextureInfo> texture_info;
 
 const char *enumToString(GLenum pname);
 
