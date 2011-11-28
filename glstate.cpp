@@ -152,22 +152,35 @@ getShaderObjSource(ShaderMap &shaderMap, GLhandleARB shaderObj)
 }
 
 static inline void
-getTextureInfo(GLenum target, GLint level, TextureInfo &info)
+getTextureInfo(GLenum target, GLint level, bool useSaved, TextureInfo &info)
 {
-    info.height = 1;
-    info.depth = 1;
+    if (useSaved) {
+        if (level == 0) {
+            info = texture_info[bound_texture[target]];
+        }
+        else {
+            info = TextureInfo();
+        }
+    } else {
+        info.height = 1;
+        info.depth = 1;
 
-    glGetTexLevelParameteriv(target, level, GL_TEXTURE_INTERNAL_FORMAT, &info.format);
+        glGetTexLevelParameteriv(target, level, GL_TEXTURE_INTERNAL_FORMAT, &info.format);
 
-    info.width = 0;
-    glGetTexLevelParameteriv(target, level, GL_TEXTURE_WIDTH, &info.width);
+        info.width = 0;
+        glGetTexLevelParameteriv(target, level, GL_TEXTURE_WIDTH, &info.width);
 
-    if (target != GL_TEXTURE_1D) {
-        info.height = 0;
-        glGetTexLevelParameteriv(target, level, GL_TEXTURE_HEIGHT, &info.height);
-        if (target == GL_TEXTURE_3D) {
-            info.depth = 0;
-            glGetTexLevelParameteriv(target, level, GL_TEXTURE_DEPTH, &info.depth);
+        if (target != GL_TEXTURE_1D) {
+            info.height = 0;
+            glGetTexLevelParameteriv(target, level, GL_TEXTURE_HEIGHT, &info.height);
+            if (target == GL_TEXTURE_3D) {
+                info.depth = 0;
+                glGetTexLevelParameteriv(target, level, GL_TEXTURE_DEPTH, &info.depth);
+            }
+        }
+    }
+}
+
         }
     }
 }
@@ -653,7 +666,7 @@ dumpTexture(JSONWriter &json, GLenum target, GLenum binding)
     do {
         TextureInfo info;
 
-        getTextureInfo(target, level, info);
+        getTextureInfo(target, level, false, info);
         if (!info.width || !info.height) {
             break;
         }
