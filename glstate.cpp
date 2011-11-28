@@ -682,7 +682,7 @@ dumpTextureImage(JSONWriter &json, GLenum target, GLint level, TextureInfo &info
 
         resetPixelPackState();
 
-        getTexImage(target, level, info, false, pixels);
+        getTexImage(target, level, info, true, pixels);
 
         restorePixelPackState();
 
@@ -713,7 +713,7 @@ dumpTexture(JSONWriter &json, GLenum target, GLenum binding)
     do {
         TextureInfo info;
 
-        getTextureInfo(target, level, false, info);
+        getTextureInfo(target, level, true, info);
         if (!info.width || !info.height) {
             break;
         }
