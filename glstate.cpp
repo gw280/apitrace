@@ -60,6 +60,14 @@ namespace glstate {
 std::map<GLenum, GLuint> bound_texture;
 std::map<GLuint, TextureInfo> texture_info;
 
+static const GLenum texture_bindings[][2] = {
+    {GL_TEXTURE_1D, GL_TEXTURE_BINDING_1D},
+    {GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D},
+    {GL_TEXTURE_3D, GL_TEXTURE_BINDING_3D},
+    {GL_TEXTURE_RECTANGLE, GL_TEXTURE_BINDING_RECTANGLE},
+    {GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP}
+};
+
 static inline void
 resetPixelPackState(void) {
     glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
@@ -181,7 +189,46 @@ getTextureInfo(GLenum target, GLint level, bool useSaved, TextureInfo &info)
     }
 }
 
+static inline GLenum
+textureTargetToBinding(GLenum target)
+{
+    for (unsigned i = 0; i < sizeof(texture_bindings)/sizeof(texture_bindings[0]); ++i) {
+        if (texture_bindings[i][0] == target) {
+            return texture_bindings[i][1];
         }
+    }
+
+    return 0;
+}
+
+static inline void
+getTexImage(GLenum target, GLint level, TextureInfo &info, bool useFBO, GLubyte *pixels)
+{
+    if (useFBO) {
+        // Attach the bound texture to a framebuffer
+        GLint tex = 0;
+        GLint prev_fbo = 0;
+        GLuint fbo = 0;
+        GLenum binding = textureTargetToBinding(target);
+
+        glGetIntegerv(binding, &tex);
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+        if (target == GL_TEXTURE_2D) {
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, level);
+            glReadPixels(0, 0, info.width, info.height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        } else if (target == GL_TEXTURE_3D) {
+            for (int i = 0; i < info.depth; i++) {
+                glFramebufferTexture3D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_3D, tex, level, i);
+                glReadPixels(0, 0, info.width, info.height, GL_RGBA, GL_UNSIGNED_BYTE, pixels + 4 * i * info.width * info.height);
+            }
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo);
+    } else {
+        glGetTexImage(target, level, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     }
 }
 
@@ -635,7 +682,7 @@ dumpTextureImage(JSONWriter &json, GLenum target, GLint level, TextureInfo &info
 
         resetPixelPackState();
 
-        glGetTexImage(target, level, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        getTexImage(target, level, info, false, pixels);
 
         restorePixelPackState();
 
@@ -789,13 +836,6 @@ getDrawableBounds(GLint *width, GLint *height) {
 }
 
 
-static const GLenum texture_bindings[][2] = {
-    {GL_TEXTURE_1D, GL_TEXTURE_BINDING_1D},
-    {GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D},
-    {GL_TEXTURE_3D, GL_TEXTURE_BINDING_3D},
-    {GL_TEXTURE_RECTANGLE, GL_TEXTURE_BINDING_RECTANGLE},
-    {GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP}
-};
 
 
 static bool
