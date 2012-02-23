@@ -29,8 +29,17 @@ set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 set (CMAKE_USE_PYTHON_VERSION 2.7 2.6)
 
-find_package (PythonInterp REQUIRED)
-find_package (OpenGL REQUIRED)
+set(BUILD_CLI_TOOLS true)
+
+if (ANDROID)
+    find_host_package (PythonInterp REQUIRED)
+    set(ENABLE_EGL true)
+    set(ENABLE_GUI false)
+    set(BUILD_CLI_TOOLS false)
+else ()
+    find_package (PythonInterp REQUIRED)
+    find_package (OpenGL REQUIRED)
+endif ()
 
 if (ENABLE_GUI)
     if (NOT (ENABLE_GUI STREQUAL "AUTO"))
@@ -57,7 +66,14 @@ else ()
         if (NOT ENABLE_EGL STREQUAL "AUTO")
             set (REQUIRE_EGL REQUIRED)
         endif ()
-        pkg_check_modules (EGL egl glesv1_cm glesv2 ${REQUIRE_EGL})
+
+        if (ANDROID)
+            # Android has EGL and no pkg-config, so we just say it has it
+            set(EGL_FOUND true)
+        else ()
+            pkg_check_modules (EGL egl glesv1_cm glesv2 ${REQUIRE_EGL})
+        endif ()
+
         if (EGL_FOUND)
             include_directories (${EGL_INCLUDE_DIR})
             add_definitions (-DHAVE_EGL)
@@ -208,6 +224,9 @@ include_directories (BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/glext)
 # For EGL headers
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/khr)
 
+# Desktop GL headers provided by Mesa
+include_directories (${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/mesa)
+
 ##############################################################################
 # Installation directories
 
@@ -276,7 +295,7 @@ else ()
     endif ()
 endif ()
 
-add_library (common STATIC
+set (COMMON_SOURCE
     common/trace_callset.cpp
     common/trace_dump.cpp
     common/trace_file.cpp
@@ -298,6 +317,10 @@ add_library (common STATIC
     common/image_pnm.cpp
     common/image_png.cpp
     common/${os}
+)
+
+add_library (common STATIC
+    ${COMMON_SOURCE}
 )
 
 set_target_properties (common PROPERTIES
@@ -506,7 +529,6 @@ if (EGL_FOUND)
     )
 
     target_link_libraries (egltrace
-        pthread
         dl
     )
 
@@ -623,7 +645,9 @@ endif ()
 ##############################################################################
 # CLI
 
-add_subdirectory(cli)
+if (BUILD_CLI_TOOLS)
+    add_subdirectory(cli)
+endif ()
 
 ##############################################################################
 # Scripts (to support the CLI)

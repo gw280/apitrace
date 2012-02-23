@@ -46,6 +46,16 @@ doing:
     cmake -H. -Bbuild32 -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_EXE_LINKER_FLAGS=-m32 -DENABLE_GUI=FALSE
     make -C build32 glxtrace
 
+Android
+-------
+
+Build as:
+
+    export ANDROID_NDK=/path/to/your/ndk
+    cmake -DCMAKE_TOOLCHAIN_FILE=android/android.toolchain.cmake -DANDROID_API_LEVEL=9 -Bbuild -H.
+    make -C build
+
+This will generate a libapitrace.so in your libs/armeabi-v7a/ directory that can be used.
 
 Windows
 -------
