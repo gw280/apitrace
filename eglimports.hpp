@@ -42,7 +42,7 @@
 
 // Include our own glext.h
 #undef __glext_h_
-#include "glext/glext.h"
+#include "GL/glext.h"
 
 #ifndef GL_TEXTURE_INDEX_SIZE_EXT
 #define GL_TEXTURE_INDEX_SIZE_EXT         0x80ED
