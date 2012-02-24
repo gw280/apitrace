@@ -43,9 +43,11 @@
 HINSTANCE __libGlHandle = NULL;
 #else
 void *__libGlHandle = NULL;
+void *__libEglHandle = NULL;
 #endif
 
-
+#define EGL_LIB "libEGL.so"
+#define GL_LIB "libGLESv2.so"
 
 #if defined(_WIN32)
 
@@ -56,6 +58,63 @@ void *__libGlHandle = NULL;
 #error Unsupported
 
 #else
+
+/*
+ * Absolutely make sure we use the real dlopen here
+ */
+typedef void * (*PFNDLOPEN)(const char *, int);
+
+static void *__dlopen(const char *filename, int flag)
+{
+    typedef void * (*PFNDLOPEN)(const char *, int);
+    static PFNDLOPEN dlopen_ptr = NULL;
+
+    if (!dlopen_ptr) {
+#if defined(ANDROID)
+        // Android doesn't support RTLD_NEXT
+        dlopen_ptr = (PFNDLOPEN)dlsym(RTLD_DEFAULT, "dlopen");
+#else
+        dlopen_ptr = (PFNDLOPEN)dlsym(RTLD_NEXT, "dlopen");
+#endif
+        if (!dlopen_ptr) {
+            os::log("apitrace: error: dlsym(RTLD_NEXT, \"dlopen\") failed\n");
+            return NULL;
+        }
+    }
+
+    return dlopen_ptr(filename, flag);
+}
+
+/* 
+ * Initialise dlopen handles for the GL library and the EGL 
+ * library
+ */
+bool
+__dlopenLibraries()
+{
+    // We use __dlopen to ensure we don't catch apitrace's dlopen
+    // which will intercept a dlopen call to any GL/EGL library
+    if (!__libEglHandle) {
+        __libEglHandle = __dlopen(EGL_LIB, RTLD_LOCAL | RTLD_LAZY);
+
+        if (!__libEglHandle) {
+            os::log("apitrace: error: couldn't load %s\n", EGL_LIB);
+            return false;
+        }
+    }
+
+    if (!__libGlHandle) {
+        __libGlHandle = __dlopen(GL_LIB, RTLD_LOCAL | RTLD_LAZY);
+
+        if (!__libGlHandle) {
+            os::log("apitrace: error: couldn't load %s\n", GL_LIB);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 /*
  * Lookup a public EGL/GL/GLES symbol
@@ -73,7 +132,16 @@ void *__libGlHandle = NULL;
 void *
 __getPublicProcAddress(const char *procName)
 {
-    return dlsym(RTLD_NEXT, procName);
+    void *proc = NULL;
+
+    if (__dlopenLibraries()) {
+        proc = dlsym(__libEglHandle, procName);
+
+        if (!proc)
+            proc = dlsym(__libGlHandle, procName);
+    }
+
+    return proc;
 }
 
 /*
@@ -90,8 +158,15 @@ __getPublicProcAddress(const char *procName)
 void *
 __getPrivateProcAddress(const char *procName)
 {
-    void *proc;
-    proc = dlsym(RTLD_NEXT, procName);
+    void *proc = NULL;
+
+    if (__dlopenLibraries()) {
+        proc = dlsym(__libEglHandle, procName);
+
+        if (!proc)
+            proc = dlsym(__libGlHandle, procName);
+    }
+
     if (!proc && procName[0] == 'g' && procName[1] == 'l')
         proc = (void *) __eglGetProcAddress(procName);
 
