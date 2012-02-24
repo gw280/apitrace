@@ -202,6 +202,14 @@ static void retrace_eglMakeCurrent(trace::Call &call) {
     glws::Drawable *new_drawable = getDrawable(call.arg(1).toUIntPtr());
     glws::Context *new_context = getContext(call.arg(3).toUIntPtr());
 
+    // In Fennec we get the egl window surface from Java which isn't
+    // traced, so just create a drawable if it doesn't exist in here
+    if (!new_drawable) {
+        createDrawable(0,call.arg(1).toUIntPtr());
+        new_drawable = getDrawable(call.arg(1).toUIntPtr());
+    }
+
+
     if (new_drawable == drawable && new_context == context) {
         return;
     }
