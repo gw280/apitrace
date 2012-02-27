@@ -122,7 +122,12 @@ static void *__dlopen(const char *filename, int flag)
     static PFNDLOPEN dlopen_ptr = NULL;
 
     if (!dlopen_ptr) {
+#if defined(ANDROID)
+        // Android doesn't support RTLD_NEXT
+        dlopen_ptr = (PFNDLOPEN)dlsym(RTLD_DEFAULT, "dlopen");
+#else
         dlopen_ptr = (PFNDLOPEN)dlsym(RTLD_NEXT, "dlopen");
+#endif
         if (!dlopen_ptr) {
             os::log("apitrace: error: dlsym(RTLD_NEXT, \"dlopen\") failed\n");
             return NULL;
