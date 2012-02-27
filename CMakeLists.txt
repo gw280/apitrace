@@ -528,8 +528,15 @@ if (EGL_FOUND)
         LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/wrappers
     )
 
+    if (ANDROID)
+        set(EXTRA_LIBRARIES
+            log
+        )
+    endif ()
+
     target_link_libraries (egltrace
         dl
+        ${EXTRA_LIBRARIES}
     )
 
     install (TARGETS egltrace LIBRARY DESTINATION ${WRAPPER_INSTALL_DIR})
