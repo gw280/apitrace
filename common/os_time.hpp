@@ -50,10 +50,10 @@ namespace os {
     extern long long timeFrequency;
 #elif defined(__linux__)
     // nanoseconds on Linux
-    static const long long timeFrequency = 1000000000;
+    static const long long timeFrequency = 1000000000LL;
 #else
     // microseconds on Unices
-    static const long long timeFrequency = 1000000;
+    static const long long timeFrequency = 1000000LL;
 #endif
 
     // Time from an unknown base in a unit determined by timeFrequency
@@ -78,7 +78,7 @@ namespace os {
         if (!timeFrequency) {
             mach_timebase_info_data_t timebaseInfo;
             mach_timebase_info(&timebaseInfo);
-            timeFrequency = 1000000000 * timebaseInfo.denom / timebaseInfo.numer;
+            timeFrequency = 1000000000LL * timebaseInfo.denom / timebaseInfo.numer;
         }
         return mach_absolute_time();
 #else
